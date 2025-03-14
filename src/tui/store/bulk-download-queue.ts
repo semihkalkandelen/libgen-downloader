@@ -16,6 +16,7 @@ import { findDownloadUrlFromMirror } from "../../api/data/url";
 import { downloadFile } from "../../api/data/download";
 import { createMD5ListFile } from "../../api/data/file";
 import { httpAgent } from "../../settings";
+import { setTimeout } from "timers/promises"; //10-15 mins cooldown for every pdf
 
 export interface IBulkDownloadQueueItem extends IDownloadProgress {
   md5: string;
@@ -195,6 +196,11 @@ export const createBulkDownloadQueueStateSlice = (
     const bulkDownloadQueue = get().bulkDownloadQueue;
     for (let i = 0; i < bulkDownloadQueue.length; i++) {
       const item = bulkDownloadQueue[i];
+      const waitTime = Math.floor(Math.random() * (900000 - 600000) + 600000); //puts a randomly cooldown between 10-15 minutes 
+      console.log(`Bekleniyor: ${(waitTime / 60000).toFixed(2)} dakika...`);  //so libgen will not understand whether it is a bot and let you
+      await setTimeout(waitTime);                                             //download more files without lower bandwith
+
+    
       const md5SearchUrl = constructMD5SearchUrl(get().searchByMD5Pattern, get().mirror, item.md5);
 
       get().onBulkQueueItemProcessing(i);
