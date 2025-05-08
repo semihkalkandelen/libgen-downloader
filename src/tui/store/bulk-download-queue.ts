@@ -16,6 +16,33 @@ import { findDownloadUrlFromMirror } from "../../api/data/url";
 import { downloadFile } from "../../api/data/download";
 import { createMD5ListFile } from "../../api/data/file";
 import { httpAgent } from "../../settings";
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+
+const userAgents = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/117.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"
+];
+
+function getRandomHeaders() {
+  return {
+    "User-Agent": userAgents[Math.floor(Math.random() * userAgents.length)],
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "en-US,en;q=0.9,tr;q=0.8",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "DNT": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0"
+  };
+}
+
 
 export interface IBulkDownloadQueueItem extends IDownloadProgress {
   md5: string;
@@ -195,6 +222,11 @@ export const createBulkDownloadQueueStateSlice = (
     const bulkDownloadQueue = get().bulkDownloadQueue;
     for (let i = 0; i < bulkDownloadQueue.length; i++) {
       const item = bulkDownloadQueue[i];
+      const waitTime = Math.floor(Math.random() * (900000 - 600000) + 600000); //puts a randomly cooldown between 10-15 minutes 
+      console.log(`Bekleniyor: ${(waitTime / 60000).toFixed(2)} dakika...`);  //so libgen will not understand whether it is a bot and let you
+      await sleep(waitTime);                                             //download more files without lower bandwith
+
+    
       const md5SearchUrl = constructMD5SearchUrl(get().searchByMD5Pattern, get().mirror, item.md5);
 
       get().onBulkQueueItemProcessing(i);
@@ -230,8 +262,10 @@ export const createBulkDownloadQueueStateSlice = (
       const downloadStream = await attempt(() =>
         fetch(downloadUrl, {
           agent: httpAgent,
+          headers: getRandomHeaders()
         })
       );
+      
       if (!downloadStream) {
         get().setWarningMessage(`Couldn't fetch the download stream for ${item.md5}`);
         get().onBulkQueueItemFail(i);
